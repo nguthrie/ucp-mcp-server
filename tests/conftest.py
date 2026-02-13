@@ -20,11 +20,12 @@ def pytest_collection_modifyitems(config, items):
     if config.getoption("--run-integration"):
         # Run integration tests
         return
-    
+
     skip_integration = pytest.mark.skip(reason="Need --run-integration option to run")
     for item in items:
         if "integration" in item.keywords:
             item.add_marker(skip_integration)
+
 
 # Sample UCP discovery response (based on flower shop example)
 SAMPLE_DISCOVERY_RESPONSE = {
@@ -106,7 +107,11 @@ SAMPLE_CHECKOUT_RESPONSE = {
     "line_items": [
         {
             "id": "2e86d63a-a6b8-4b4d-8f41-559f4c6991ea",
-            "item": {"id": "bouquet_roses", "title": "Bouquet of Red Roses", "price": 3500},
+            "item": {
+                "id": "bouquet_roses",
+                "title": "Bouquet of Red Roses",
+                "price": 3500,
+            },
             "quantity": 1,
             "totals": [
                 {"type": "subtotal", "amount": 3500},
@@ -138,7 +143,11 @@ SAMPLE_CHECKOUT_WITH_DISCOUNT = {
     "line_items": [
         {
             "id": "2e86d63a-a6b8-4b4d-8f41-559f4c6991ea",
-            "item": {"id": "bouquet_roses", "title": "Bouquet of Red Roses", "price": 3500},
+            "item": {
+                "id": "bouquet_roses",
+                "title": "Bouquet of Red Roses",
+                "price": 3500,
+            },
             "quantity": 1,
             "totals": [
                 {"type": "subtotal", "amount": 3500},
@@ -186,9 +195,9 @@ def mock_ucp_server():
         )
 
         # Update checkout endpoint
-        respx_mock.put(
-            url__regex=r"http://localhost:8182/checkout-sessions/.*"
-        ).mock(return_value=Response(200, json=SAMPLE_CHECKOUT_WITH_DISCOUNT))
+        respx_mock.put(url__regex=r"http://localhost:8182/checkout-sessions/.*").mock(
+            return_value=Response(200, json=SAMPLE_CHECKOUT_WITH_DISCOUNT)
+        )
 
         yield respx_mock
 
@@ -198,9 +207,9 @@ def mock_invalid_server():
     """Fixture that simulates connection failures."""
     with respx.mock(assert_all_called=False) as respx_mock:
         import httpx
-        
+
         respx_mock.get("http://invalid.example/.well-known/ucp").mock(
             side_effect=httpx.ConnectError("Connection refused")
         )
-        
+
         yield respx_mock

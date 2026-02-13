@@ -63,9 +63,7 @@ class UCPClient:
         capabilities = [
             UCPCapability(**cap) for cap in ucp_data.get("capabilities", [])
         ]
-        handlers = [
-            PaymentHandler(**h) for h in payment_data.get("handlers", [])
-        ]
+        handlers = [PaymentHandler(**h) for h in payment_data.get("handlers", [])]
 
         return UCPDiscoveryResponse(
             version=ucp_data.get("version", "unknown"),
@@ -87,7 +85,10 @@ class UCPClient:
 
         # Build line items
         line_items = [
-            {"item": {"id": item["id"], "title": item.get("title", "")}, "quantity": item["quantity"]}
+            {
+                "item": {"id": item["id"], "title": item.get("title", "")},
+                "quantity": item["quantity"],
+            }
             for item in items
         ]
 
@@ -119,7 +120,9 @@ class UCPClient:
         except httpx.ConnectError as e:
             raise UCPClientError(f"Could not connect to merchant: {e}")
         except httpx.HTTPStatusError as e:
-            raise UCPClientError(f"HTTP error from merchant: {e.response.status_code} - {e.response.text}")
+            raise UCPClientError(
+                f"HTTP error from merchant: {e.response.status_code} - {e.response.text}"
+            )
         except Exception as e:
             raise UCPClientError(f"Error creating checkout: {e}")
 
@@ -179,7 +182,9 @@ class UCPClient:
         except httpx.ConnectError as e:
             raise UCPClientError(f"Could not connect to merchant: {e}")
         except httpx.HTTPStatusError as e:
-            raise UCPClientError(f"HTTP error from merchant: {e.response.status_code} - {e.response.text}")
+            raise UCPClientError(
+                f"HTTP error from merchant: {e.response.status_code} - {e.response.text}"
+            )
         except Exception as e:
             raise UCPClientError(f"Error updating checkout: {e}")
 

@@ -61,16 +61,22 @@ def skip_if_no_server(integration_server_url):
     try:
         response = httpx.get(f"{integration_server_url}/.well-known/ucp", timeout=5.0)
         if response.status_code != 200:
-            pytest.skip(f"Integration server not responding correctly at {integration_server_url}")
+            pytest.skip(
+                f"Integration server not responding correctly at {integration_server_url}"
+            )
     except Exception as e:
-        pytest.skip(f"Integration server not available at {integration_server_url}: {e}")
+        pytest.skip(
+            f"Integration server not available at {integration_server_url}: {e}"
+        )
 
 
 class TestIntegrationDiscovery:
     """Integration tests for discovery against real server."""
 
     @pytest.mark.asyncio
-    async def test_discover_real_flower_shop(self, integration_server_url, skip_if_no_server):
+    async def test_discover_real_flower_shop(
+        self, integration_server_url, skip_if_no_server
+    ):
         """Test discovery against real flower shop server."""
         result = await ucp_discover(merchant_url=integration_server_url)
 
@@ -161,7 +167,9 @@ class TestIntegrationFullFlow:
     """Integration test for complete shopping flow."""
 
     @pytest.mark.asyncio
-    async def test_complete_shopping_flow(self, integration_server_url, skip_if_no_server):
+    async def test_complete_shopping_flow(
+        self, integration_server_url, skip_if_no_server
+    ):
         """Test complete flow: discover -> checkout -> discount."""
         # Step 1: Discover capabilities
         discovery = await ucp_discover(merchant_url=integration_server_url)
@@ -199,4 +207,6 @@ class TestIntegrationFullFlow:
         # Verify the flow
         assert updated["total"] < checkout["total"]
         print("\n--- Flow Complete ---")
-        print(f"Saved ${(checkout['total'] - updated['total']) / 100:.2f} with discount!")
+        print(
+            f"Saved ${(checkout['total'] - updated['total']) / 100:.2f} with discount!"
+        )

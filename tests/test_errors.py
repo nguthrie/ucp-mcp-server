@@ -35,11 +35,14 @@ class TestConnectionErrors:
         assert "connect" in error_lower or "merchant" in error_lower
 
     @pytest.mark.asyncio
-    async def test_checkout_with_invalid_merchant_returns_error(self, mock_invalid_server):
+    async def test_checkout_with_invalid_merchant_returns_error(
+        self, mock_invalid_server
+    ):
         """Goal: Checkout also handles connection errors gracefully."""
         # Set up mock for checkout endpoint
         with respx.mock(assert_all_called=False) as mock:
             import httpx
+
             mock.post("http://invalid.example/checkout-sessions").mock(
                 side_effect=httpx.ConnectError("Connection refused")
             )

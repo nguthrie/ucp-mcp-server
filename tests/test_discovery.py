@@ -60,7 +60,9 @@ class TestUCPDiscover:
             assert capability["name"] != ""
 
     @pytest.mark.asyncio
-    async def test_discover_payment_handlers_have_required_fields(self, mock_ucp_server):
+    async def test_discover_payment_handlers_have_required_fields(
+        self, mock_ucp_server
+    ):
         """Goal: Each payment handler has id and name."""
         result = await ucp_discover(merchant_url="http://localhost:8182")
 
