@@ -1,5 +1,6 @@
 """HTTP client for UCP API calls."""
 
+import uuid
 from typing import Any
 
 import httpx
@@ -107,8 +108,8 @@ class UCPClient:
             "Content-Type": "application/json",
             "UCP-Agent": 'profile="https://ucp-mcp-server.example/profile"',
             "request-signature": "test",
-            "idempotency-key": "test-key",
-            "request-id": "test-request-id",
+            "idempotency-key": str(uuid.uuid4()),
+            "request-id": str(uuid.uuid4()),
         }
 
         try:
@@ -135,20 +136,40 @@ class UCPClient:
         client = self._get_client()
         url = f"{merchant_url.rstrip('/')}/checkout-sessions/{checkout_id}"
 
+        # First, fetch the current checkout state so we can send required fields
+        get_headers = {
+            "UCP-Agent": 'profile="https://ucp-mcp-server.example/profile"',
+            "request-signature": "test",
+            "request-id": str(uuid.uuid4()),
+        }
+        try:
+            get_response = await client.get(url, headers=get_headers)
+            get_response.raise_for_status()
+            current = get_response.json()
+        except Exception:
+            # If we can't fetch, build a minimal payload
+            current = {}
+
         payload: dict[str, Any] = {"id": checkout_id}
+
+        # Include required fields from current checkout state
+        if current.get("line_items"):
+            payload["line_items"] = current["line_items"]
+        if line_items:
+            payload["line_items"] = line_items
+
+        payload["currency"] = current.get("currency", "USD")
+        payload["payment"] = current.get("payment", {"instruments": [], "handlers": []})
 
         if discount_codes:
             payload["discounts"] = {"codes": discount_codes}
-
-        if line_items:
-            payload["line_items"] = line_items
 
         headers = {
             "Content-Type": "application/json",
             "UCP-Agent": 'profile="https://ucp-mcp-server.example/profile"',
             "request-signature": "test",
-            "idempotency-key": "test-update-key",
-            "request-id": "test-update-request-id",
+            "idempotency-key": str(uuid.uuid4()),
+            "request-id": str(uuid.uuid4()),
         }
 
         try:
