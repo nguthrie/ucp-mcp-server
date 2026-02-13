@@ -4,13 +4,6 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from .models import (
-    BuyerInfo,
-    CheckoutItem,
-    CreateCheckoutRequest,
-    DiscoverRequest,
-    UpdateCheckoutRequest,
-)
 from .ucp_client import UCPClient, UCPClientError
 
 # Initialize FastMCP server
