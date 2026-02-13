@@ -1,0 +1,67 @@
+[project]
+name = "ucp-mcp-server"
+version = "0.1.0"
+description = "MCP server that exposes UCP shopping capabilities as tools for AI assistants. Let Claude, Cursor, and any MCP-compatible AI shop via the Universal Commerce Protocol."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "ucp-mcp-server contributors" },
+]
+keywords = ["ucp", "mcp", "ai", "shopping", "commerce", "agent", "protocol", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "mcp[cli]>=1.2.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "respx>=0.21.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/nguthrie/ucp-mcp-server"
+Documentation = "https://github.com/nguthrie/ucp-mcp-server#readme"
+Repository = "https://github.com/nguthrie/ucp-mcp-server"
+Issues = "https://github.com/nguthrie/ucp-mcp-server/issues"
+
+[project.scripts]
+ucp-mcp-server = "ucp_mcp_server.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ucp_mcp_server"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: mark test as integration test (requires live UCP server)",
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
