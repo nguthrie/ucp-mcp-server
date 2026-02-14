@@ -179,6 +179,46 @@ SAMPLE_CHECKOUT_WITH_DISCOUNT = {
     },
 }
 
+# Sample completed checkout response
+SAMPLE_CHECKOUT_COMPLETED = {
+    "ucp": {
+        "version": "2026-01-11",
+        "capabilities": [
+            {"name": "dev.ucp.shopping.checkout", "version": "2026-01-11"}
+        ],
+    },
+    "id": "cb9c0fc5-3e81-427c-ae54-83578294daf3",
+    "line_items": [
+        {
+            "id": "2e86d63a-a6b8-4b4d-8f41-559f4c6991ea",
+            "item": {
+                "id": "bouquet_roses",
+                "title": "Bouquet of Red Roses",
+                "price": 3500,
+            },
+            "quantity": 1,
+            "totals": [
+                {"type": "subtotal", "amount": 3500},
+                {"type": "total", "amount": 3500},
+            ],
+        }
+    ],
+    "buyer": {"full_name": "John Doe", "email": "john.doe@example.com"},
+    "status": "complete",
+    "currency": "USD",
+    "totals": [
+        {"type": "subtotal", "amount": 3500},
+        {"type": "total", "amount": 3500},
+    ],
+    "links": [],
+    "payment": {"handlers": [], "instruments": []},
+    "discounts": {},
+    "order": {
+        "id": "order-abc-123",
+        "permalink_url": "http://localhost:8182/orders/order-abc-123",
+    },
+}
+
 
 @pytest.fixture
 def mock_ucp_server():
@@ -194,10 +234,20 @@ def mock_ucp_server():
             return_value=Response(200, json=SAMPLE_CHECKOUT_RESPONSE)
         )
 
+        # Get checkout endpoint (for update flow)
+        respx_mock.get(url__regex=r"http://localhost:8182/checkout-sessions/.*").mock(
+            return_value=Response(200, json=SAMPLE_CHECKOUT_RESPONSE)
+        )
+
         # Update checkout endpoint
         respx_mock.put(url__regex=r"http://localhost:8182/checkout-sessions/.*").mock(
             return_value=Response(200, json=SAMPLE_CHECKOUT_WITH_DISCOUNT)
         )
+
+        # Complete checkout endpoint
+        respx_mock.post(
+            url__regex=r"http://localhost:8182/checkout-sessions/.*/complete"
+        ).mock(return_value=Response(200, json=SAMPLE_CHECKOUT_COMPLETED))
 
         yield respx_mock
 

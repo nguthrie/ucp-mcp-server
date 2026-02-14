@@ -34,7 +34,13 @@ import os
 
 import pytest
 
-from ucp_mcp_server.server import ucp_discover, ucp_checkout_create, ucp_checkout_update
+from ucp_mcp_server.server import (
+    ucp_checkout_complete,
+    ucp_checkout_create,
+    ucp_checkout_set_fulfillment,
+    ucp_checkout_update,
+    ucp_discover,
+)
 
 
 # Skip integration tests by default
@@ -184,8 +190,8 @@ class TestIntegrationFullFlow:
             items=[
                 {"id": "bouquet_roses", "quantity": 2},
             ],
-            buyer_name="Full Flow Test",
-            buyer_email="fullflow@test.com",
+            buyer_name="John Doe",
+            buyer_email="john.doe@example.com",
         )
         assert "error" not in checkout
         print("\n--- Step 2: Create Checkout ---")
@@ -206,7 +212,34 @@ class TestIntegrationFullFlow:
 
         # Verify the flow
         assert updated["total"] < checkout["total"]
-        print("\n--- Flow Complete ---")
+        print("\n--- Step 3 Result ---")
         print(
             f"Saved ${(checkout['total'] - updated['total']) / 100:.2f} with discount!"
         )
+
+        # Step 4: Set up fulfillment (shipping)
+        fulfillment = await ucp_checkout_set_fulfillment(
+            merchant_url=integration_server_url,
+            checkout_id=checkout["checkout_id"],
+        )
+        assert "error" not in fulfillment, f"Got error: {fulfillment.get('error')}"
+        print("\n--- Step 4: Set Fulfillment ---")
+        print(f"Total with shipping: ${fulfillment['total'] / 100:.2f}")
+
+        # Step 5: Complete checkout (payment)
+        completed = await ucp_checkout_complete(
+            merchant_url=integration_server_url,
+            checkout_id=checkout["checkout_id"],
+            payment_handler_id="mock_payment_handler",
+            card_token="success_token",
+        )
+        assert "error" not in completed, f"Got error: {completed.get('error')}"
+        print("\n--- Step 4: Complete Checkout ---")
+        print(f"Status: {completed['status']}")
+        print(f"Order ID: {completed.get('order_id')}")
+        print(f"Order URL: {completed.get('order_url')}")
+
+        # Verify completion
+        assert completed["status"] in ("complete", "completed")
+        assert completed.get("order_id") is not None
+        print("\n--- Flow Complete: Purchase Successful! ---")

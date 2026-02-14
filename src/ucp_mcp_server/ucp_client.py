@@ -128,6 +128,194 @@ class UCPClient:
 
         return CheckoutSession(**data)
 
+    async def complete_checkout(
+        self,
+        merchant_url: str,
+        checkout_id: str,
+        payment_handler_id: str,
+        card_token: str = "success_token",
+        card_brand: str = "Visa",
+        card_last_digits: str = "4242",
+    ) -> CheckoutSession:
+        """Complete a checkout session by submitting payment."""
+        client = self._get_client()
+        url = f"{merchant_url.rstrip('/')}/checkout-sessions/{checkout_id}/complete"
+
+        payload = {
+            "payment_data": {
+                "id": f"instr_{uuid.uuid4().hex[:8]}",
+                "handler_id": payment_handler_id,
+                "handler_name": payment_handler_id,
+                "type": "card",
+                "brand": card_brand,
+                "last_digits": card_last_digits,
+                "credential": {
+                    "type": "token",
+                    "token": card_token,
+                },
+                "billing_address": {
+                    "street_address": "123 Main St",
+                    "address_locality": "Anytown",
+                    "address_region": "CA",
+                    "address_country": "US",
+                    "postal_code": "12345",
+                },
+            },
+            "risk_signals": {
+                "ip": "127.0.0.1",
+                "browser": "ucp-mcp-server",
+            },
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "UCP-Agent": 'profile="https://ucp-mcp-server.example/profile"',
+            "request-signature": "test",
+            "idempotency-key": str(uuid.uuid4()),
+            "request-id": str(uuid.uuid4()),
+        }
+
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        except httpx.ConnectError as e:
+            raise UCPClientError(f"Could not connect to merchant: {e}")
+        except httpx.HTTPStatusError as e:
+            raise UCPClientError(
+                f"HTTP error from merchant: {e.response.status_code} - {e.response.text}"
+            )
+        except Exception as e:
+            raise UCPClientError(f"Error completing checkout: {e}")
+
+        return CheckoutSession(**data)
+
+    async def get_checkout(
+        self,
+        merchant_url: str,
+        checkout_id: str,
+    ) -> dict[str, Any]:
+        """Fetch current checkout state."""
+        client = self._get_client()
+        url = f"{merchant_url.rstrip('/')}/checkout-sessions/{checkout_id}"
+        headers = {
+            "UCP-Agent": 'profile="https://ucp-mcp-server.example/profile"',
+            "request-signature": "test",
+            "request-id": str(uuid.uuid4()),
+        }
+        try:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except httpx.ConnectError as e:
+            raise UCPClientError(f"Could not connect to merchant: {e}")
+        except httpx.HTTPStatusError as e:
+            raise UCPClientError(
+                f"HTTP error from merchant: {e.response.status_code} - {e.response.text}"
+            )
+        except Exception as e:
+            raise UCPClientError(f"Error fetching checkout: {e}")
+
+    async def raw_update_checkout(
+        self,
+        merchant_url: str,
+        checkout_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Send a raw update payload to a checkout session."""
+        client = self._get_client()
+        url = f"{merchant_url.rstrip('/')}/checkout-sessions/{checkout_id}"
+        headers = {
+            "Content-Type": "application/json",
+            "UCP-Agent": 'profile="https://ucp-mcp-server.example/profile"',
+            "request-signature": "test",
+            "idempotency-key": str(uuid.uuid4()),
+            "request-id": str(uuid.uuid4()),
+        }
+        try:
+            response = await client.put(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except httpx.ConnectError as e:
+            raise UCPClientError(f"Could not connect to merchant: {e}")
+        except httpx.HTTPStatusError as e:
+            raise UCPClientError(
+                f"HTTP error from merchant: {e.response.status_code} - {e.response.text}"
+            )
+        except Exception as e:
+            raise UCPClientError(f"Error updating checkout: {e}")
+
+    async def setup_fulfillment(
+        self,
+        merchant_url: str,
+        checkout_id: str,
+    ) -> dict[str, Any]:
+        """Set up fulfillment (shipping) for a checkout. Auto-selects first address and option."""
+        # Get current checkout state
+        current = await self.get_checkout(merchant_url, checkout_id)
+
+        base_payload = {
+            "id": checkout_id,
+            "line_items": current["line_items"],
+            "currency": current["currency"],
+            "payment": current["payment"],
+        }
+
+        # Step 1: Trigger fulfillment generation
+        payload = {**base_payload, "fulfillment": {"methods": [{"type": "shipping"}]}}
+        data = await self.raw_update_checkout(merchant_url, checkout_id, payload)
+
+        # Step 2: Select first destination
+        fulfillment = data.get("fulfillment", {})
+        methods = fulfillment.get("methods", [])
+        if not methods:
+            return data
+
+        method = methods[0]
+        destinations = method.get("destinations", [])
+        if not destinations:
+            return data
+
+        dest_id = destinations[0]["id"]
+        payload = {
+            **base_payload,
+            "line_items": data["line_items"],
+            "payment": data["payment"],
+            "fulfillment": {
+                "methods": [{"type": "shipping", "selected_destination_id": dest_id}]
+            },
+        }
+        data = await self.raw_update_checkout(merchant_url, checkout_id, payload)
+
+        # Step 3: Select first shipping option
+        fulfillment = data.get("fulfillment", {})
+        methods = fulfillment.get("methods", [])
+        if not methods:
+            return data
+
+        method = methods[0]
+        groups = method.get("groups", [])
+        if not groups or not groups[0].get("options"):
+            return data
+
+        option_id = groups[0]["options"][0]["id"]
+        payload = {
+            **base_payload,
+            "line_items": data["line_items"],
+            "payment": data["payment"],
+            "fulfillment": {
+                "methods": [
+                    {
+                        "type": "shipping",
+                        "selected_destination_id": dest_id,
+                        "groups": [{"selected_option_id": option_id}],
+                    }
+                ]
+            },
+        }
+        data = await self.raw_update_checkout(merchant_url, checkout_id, payload)
+        return data
+
     async def update_checkout(
         self,
         merchant_url: str,

@@ -68,6 +68,13 @@ class DiscountApplied(BaseModel):
     automatic: bool = False
 
 
+class OrderInfo(BaseModel):
+    """Order information returned after checkout completion."""
+
+    id: str | None = None
+    permalink_url: str | None = None
+
+
 class CheckoutSession(BaseModel):
     """A UCP checkout session."""
 
@@ -77,6 +84,7 @@ class CheckoutSession(BaseModel):
     line_items: list[LineItem] = Field(default_factory=list)
     totals: list[CheckoutTotals] = Field(default_factory=list)
     discounts: dict[str, Any] = Field(default_factory=dict)
+    order: OrderInfo | None = Field(default=None)
 
     @property
     def total(self) -> int:

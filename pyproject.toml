@@ -1,6 +1,6 @@
 [project]
 name = "ucp-mcp-server"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server that exposes UCP shopping capabilities as tools for AI assistants. Let Claude, Cursor, and any MCP-compatible AI shop via the Universal Commerce Protocol."
 readme = "README.md"
 requires-python = ">=3.10"

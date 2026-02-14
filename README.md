@@ -17,6 +17,8 @@
 | `ucp_discover` | Find out what a merchant supports (capabilities, payment methods) |
 | `ucp_checkout_create` | Start a purchase (add items to cart, set buyer info) |
 | `ucp_checkout_update` | Apply discount codes to an existing checkout |
+| `ucp_checkout_set_fulfillment` | Set up shipping (auto-selects address and delivery option) |
+| `ucp_checkout_complete` | Complete the purchase by submitting payment |
 
 Your AI assistant gets structured, type-safe access to the entire UCP shopping flow. No scraping, no browser automation, no brittle hacks.
 
@@ -125,6 +127,43 @@ Returns:
   discounts: Details of applied discounts
 ```
 
+### `ucp_checkout_set_fulfillment`
+
+Set up shipping for a checkout. Automatically selects the first available address and delivery option.
+
+```
+Arguments:
+  merchant_url (str): Base URL of the merchant
+  checkout_id (str): The checkout session
+
+Returns:
+  checkout_id: Session ID
+  status: Current status
+  total: Updated total (may include shipping costs)
+  fulfillment: Details of selected shipping method
+```
+
+### `ucp_checkout_complete`
+
+Complete a checkout by submitting payment. This finalizes the purchase and returns an order ID.
+
+```
+Arguments:
+  merchant_url (str): Base URL of the merchant
+  checkout_id (str): The checkout session to complete
+  payment_handler_id (str): Payment handler to use (from ucp_discover)
+  card_token (str): Payment token from the provider
+  card_brand (str): Card brand (e.g., "Visa")
+  card_last_digits (str): Last 4 digits of the card
+
+Returns:
+  checkout_id: Session ID
+  status: "complete" or "completed"
+  total: Final amount charged
+  order_id: Order ID for tracking
+  order_url: Permalink to the order
+```
+
 ## Example Conversation
 
 > **You:** "Find out what the flower shop at http://flowers.example.com supports"
@@ -193,7 +232,8 @@ ucp-mcp-server/
 - [x] Merchant capability discovery
 - [x] Checkout session creation
 - [x] Discount code application
-- [ ] Purchase completion / payment submission
+- [x] Fulfillment / shipping setup
+- [x] Purchase completion / payment submission
 - [ ] Order fulfillment tracking
 - [ ] Returns and exchanges
 - [ ] Multi-merchant comparison shopping

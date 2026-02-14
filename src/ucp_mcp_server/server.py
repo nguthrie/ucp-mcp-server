@@ -103,6 +103,103 @@ async def ucp_checkout_create(
 
 
 @mcp.tool()
+async def ucp_checkout_complete(
+    merchant_url: str,
+    checkout_id: str,
+    payment_handler_id: str = "mock_payment_handler",
+    card_token: str = "success_token",
+    card_brand: str = "Visa",
+    card_last_digits: str = "4242",
+) -> dict[str, Any]:
+    """
+    Complete a checkout session by submitting payment. This finalizes the purchase.
+
+    Args:
+        merchant_url: The base URL of the UCP-enabled merchant
+        checkout_id: The ID of the checkout session to complete
+        payment_handler_id: The ID of the payment handler to use (from ucp_discover)
+        card_token: Payment token from the payment provider
+        card_brand: Card brand (e.g., Visa, Mastercard)
+        card_last_digits: Last 4 digits of the card
+
+    Returns:
+        Dictionary containing:
+        - checkout_id: The checkout session ID
+        - status: Final status (should be 'complete')
+        - total: Final total charged
+        - order_id: The order ID for tracking
+        - order_url: Permalink to the order
+    """
+    try:
+        async with UCPClient() as client:
+            result = await client.complete_checkout(
+                merchant_url=merchant_url,
+                checkout_id=checkout_id,
+                payment_handler_id=payment_handler_id,
+                card_token=card_token,
+                card_brand=card_brand,
+                card_last_digits=card_last_digits,
+            )
+            response = {
+                "checkout_id": result.id,
+                "status": result.status,
+                "total": result.total,
+                "currency": result.currency,
+            }
+            if result.order:
+                response["order_id"] = result.order.id
+                response["order_url"] = result.order.permalink_url
+            return response
+    except UCPClientError as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def ucp_checkout_set_fulfillment(
+    merchant_url: str,
+    checkout_id: str,
+) -> dict[str, Any]:
+    """
+    Set up shipping/fulfillment for a checkout. Automatically selects the first
+    available shipping address and delivery option. Must be called before
+    completing checkout if the merchant requires fulfillment.
+
+    Args:
+        merchant_url: The base URL of the UCP-enabled merchant
+        checkout_id: The ID of the checkout session
+
+    Returns:
+        Dictionary containing:
+        - checkout_id: The checkout session ID
+        - status: Current status
+        - total: Updated total (may include shipping costs)
+        - fulfillment: Details of selected shipping method
+    """
+    try:
+        async with UCPClient() as client:
+            data = await client.setup_fulfillment(
+                merchant_url=merchant_url,
+                checkout_id=checkout_id,
+            )
+            return {
+                "checkout_id": data["id"],
+                "status": data["status"],
+                "total": next(
+                    (
+                        t["amount"]
+                        for t in data.get("totals", [])
+                        if t["type"] == "total"
+                    ),
+                    0,
+                ),
+                "currency": data.get("currency", "USD"),
+                "fulfillment": data.get("fulfillment"),
+            }
+    except UCPClientError as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
 async def ucp_checkout_update(
     merchant_url: str,
     checkout_id: str,
